@@ -52,6 +52,29 @@ func main() {
 }
 ```
 
+## Command-Line Tool (`mcp-server-mds`)
+
+This repository includes a command-line tool `mcp-server-mds` that runs the server directly.
+
+### Building
+
+To build the command-line tool:
+
+```bash
+go build github.com/Warashi/go-mcp-server-mds/cmd/mcp-server-mds@latest
+```
+
+### Running
+
+To run the server, execute the built binary. It serves markdown files from a specified directory over standard input/output.
+
+```bash
+./mcp-server-mds -path /path/to/your/markdown/files
+```
+
+Flags:
+- `-path`: Specifies the directory containing the markdown files to serve. Defaults to the current directory (`.`).
+
 ## Available Tools
 
 ### listMarkdownFiles
