@@ -9,9 +9,9 @@ import (
 	"errors"
 	"io/fs"
 	"iter"
-	"net/url"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/Warashi/go-modelcontextprotocol/jsonschema"
@@ -140,8 +140,9 @@ func (s *server) readFrontmatter(content []byte) (map[string]any, error) {
 		{toml.Unmarshal, "+++\n"},
 	}
 
+	content = bytes.TrimSpace(content)
 	for _, u := range unmarshalers {
-		if bytes.HasPrefix(bytes.TrimSpace(content), []byte(u.Delimiter)) {
+		if bytes.HasPrefix(content, []byte(u.Delimiter)) {
 			start := bytes.Index(content, []byte(u.Delimiter))
 			if start == -1 {
 				continue
@@ -151,7 +152,7 @@ func (s *server) readFrontmatter(content []byte) (map[string]any, error) {
 				continue
 			}
 			var frontmatter map[string]any
-			if err := u.Unmarshaler(content[start+len(u.Delimiter):end], &frontmatter); err != nil {
+			if err := u.Unmarshaler(content[start+len(u.Delimiter):start+len(u.Delimiter)+end], &frontmatter); err != nil {
 				return nil, err
 			}
 			return frontmatter, nil
@@ -239,16 +240,11 @@ func (s *server) resourceReader() mcp.ResourceReader {
 // ReadResource implements the mcp.ResourceReader interface.
 // It reads the content of a resource specified by a file URI.
 func (s *server) ReadResource(ctx context.Context, request *mcp.Request[mcp.ReadResourceRequestParams]) (*mcp.Result[mcp.ReadResourceResultData], error) {
-	u, err := url.Parse(request.Params.URI)
-	if err != nil {
-		return nil, err
+	if !strings.HasPrefix(request.Params.URI, "file://") {
+		return nil, errors.New("unsupported scheme: " + request.Params.URI)
 	}
 
-	if u.Scheme != "file" {
-		return nil, errors.New("unsupported scheme: " + u.Scheme)
-	}
-
-	content, err := fs.ReadFile(s.fs, u.Path)
+	content, err := fs.ReadFile(s.fs, request.Params.URI[7:])
 	if err != nil {
 		return nil, err
 	}
