@@ -1,3 +1,5 @@
+// Package server provides a server implementation for the Model Context Protocol (MCP)
+// that serves markdown files from a given filesystem.
 package server
 
 import (
@@ -17,6 +19,8 @@ import (
 	"github.com/goccy/go-yaml"
 )
 
+// server implements the core logic for serving markdown files via MCP.
+// It wraps an fs.FS and provides tools and resource reading capabilities.
 type server struct {
 	name        string
 	description string
@@ -24,7 +28,11 @@ type server struct {
 	opts        []mcp.ServerOption
 }
 
-func NewServer(name, description string, fs fs.FS, opts ...mcp.ServerOption) (*mcp.Server, error) {
+// New creates a new MCP server instance configured to serve markdown files from
+// the provided filesystem.
+// It initializes the server with a name, description, the filesystem, and optional
+// mcp.ServerOption configurations.
+func New(name, description string, fs fs.FS, opts ...mcp.ServerOption) (*mcp.Server, error) {
 	s := &server{
 		name:        name,
 		description: description,
@@ -63,9 +71,14 @@ type listMarkdownFilesResponse struct {
 	Files []markdownFileInfo `json:"files"`
 }
 
+// markdownFileInfo holds metadata about a single markdown file.
 type markdownFileInfo struct {
-	Path        string         `json:"path"`
-	Size        int64          `json:"size"`
+	// Path is the relative path to the markdown file within the server's filesystem.
+	Path string `json:"path"`
+	// Size is the size of the markdown file in bytes.
+	Size int64 `json:"size"`
+	// Frontmatter is a map containing the parsed frontmatter of the markdown file.
+	// It can be nil if no frontmatter is found or parsable.
 	Frontmatter map[string]any `json:"frontmatter"`
 }
 
@@ -167,11 +180,17 @@ type readMarkdownFileRequest struct {
 	Path string `json:"path" jsonschema:"required"`
 }
 
+// readMarkdownFileResponse defines the response structure for the readMarkdownFile tool.
+// It includes the file's metadata and its full content.
 type readMarkdownFileResponse struct {
-	Path        string         `json:"path"`
-	Size        int64          `json:"size"`
+	// Path is the relative path to the markdown file.
+	Path string `json:"path"`
+	// Size is the size of the markdown file in bytes.
+	Size int64 `json:"size"`
+	// Frontmatter contains the parsed frontmatter data.
 	Frontmatter map[string]any `json:"frontmatter"`
-	Content     string         `json:"content"`
+	// Content is the full text content of the markdown file.
+	Content string `json:"content"`
 }
 
 func (s *server) readMarkdownFile(ctx context.Context, request *readMarkdownFileRequest) (*readMarkdownFileResponse, error) {
@@ -217,6 +236,8 @@ func (s *server) resourceReader() mcp.ResourceReader {
 	return s
 }
 
+// ReadResource implements the mcp.ResourceReader interface.
+// It reads the content of a resource specified by a file URI.
 func (s *server) ReadResource(ctx context.Context, request *mcp.Request[mcp.ReadResourceRequestParams]) (*mcp.Result[mcp.ReadResourceResultData], error) {
 	u, err := url.Parse(request.Params.URI)
 	if err != nil {
