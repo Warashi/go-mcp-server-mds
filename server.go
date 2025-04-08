@@ -1,6 +1,6 @@
-// Package server provides a server implementation for the Model Context Protocol (MCP)
+// Package mcpmds provides a server implementation for the Model Context Protocol (MCP)
 // that serves markdown files from a given filesystem.
-package server
+package mcpmds
 
 import (
 	"bytes"
