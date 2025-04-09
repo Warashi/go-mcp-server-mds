@@ -80,14 +80,14 @@ Flags:
 
 ## Available Tools
 
-### listMarkdownFiles
+### list_{server-name}_markdown_files
 
 Lists all markdown files managed by the server. Returns metadata including:
 - File path
 - File size
 - Parsed frontmatter (if available)
 
-### readMarkdownFile
+### read_{server-name}_markdown_file
 
 Reads a specific markdown file. Requires:
 - `path`: The path to the markdown file
