@@ -15,6 +15,40 @@ This server provides a way to expose markdown files through the Model Context Pr
 - File system abstraction using `fs.FS`
 - Resource management with URI-based access
 
+## Frontmatter Support
+
+The server supports markdown files with YAML or TOML frontmatter. Frontmatter is metadata placed at the beginning of a markdown file, enclosed by delimiters.
+
+### YAML Frontmatter
+
+YAML frontmatter uses `---` as delimiters:
+
+```
+---
+title: My Document
+date: 2024-03-21
+tags: [documentation, markdown]
+---
+
+# Document Content
+```
+
+### TOML Frontmatter
+
+TOML frontmatter uses `+++` as delimiters:
+
+```
++++
+title = "My Document"
+date = 2024-03-21
+tags = ["documentation", "markdown"]
++++
+
+# Document Content
+```
+
+The frontmatter metadata is parsed and made available through the server's tools and resource descriptions. This metadata can include any valid YAML or TOML data and is useful for organizing and describing your markdown documents.
+
 ## Installation
 
 ```bash
