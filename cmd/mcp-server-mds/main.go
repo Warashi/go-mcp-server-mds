@@ -10,11 +10,13 @@ import (
 )
 
 func main() {
-	var p string
-	flag.StringVar(&p, "path", ".", "path to the directory to serve")
+	var path, name, description string
+	flag.StringVar(&path, "path", ".", "path to the directory to serve")
+	flag.StringVar(&name, "name", "mcp-server-mds", "name of the server")
+	flag.StringVar(&description, "description", "Markdown Documents Server", "description of the server")
 	flag.Parse()
 
-	server, err := mcpmds.New("mcp-server-mds", "Markdown Documents Server", os.DirFS(p))
+	server, err := mcpmds.New(name, description, os.DirFS(path))
 	if err != nil {
 		log.Fatalf("failed to create server: %v", err)
 	}
