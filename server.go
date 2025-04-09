@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/fs"
 	"iter"
 	"path/filepath"
@@ -58,8 +59,8 @@ func (s *server) server() (*mcp.Server, error) {
 
 func (s *server) listMarkdownFilesTool() mcp.Tool[*listMarkdownFilesRequest, *listMarkdownFilesResponse] {
 	return mcp.NewToolFunc(
-		"listMarkdownFiles",
-		"List all markdown files managed by this server",
+		fmt.Sprintf("list_%s_markdown_files", s.name),
+		fmt.Sprintf("List all markdown files managed by %s", s.name),
 		jsonschema.Object{},
 		s.listMarkdownFiles,
 	)
@@ -163,8 +164,8 @@ func (s *server) readFrontmatter(content []byte) (map[string]any, error) {
 
 func (s *server) readMarkdownFileTool() mcp.Tool[*readMarkdownFileRequest, *readMarkdownFileResponse] {
 	return mcp.NewToolFunc(
-		"readMarkdownFile",
-		"Read a markdown file",
+		fmt.Sprintf("read_%s_markdown_file", s.name),
+		fmt.Sprintf("Read a markdown file managed by %s", s.name),
 		jsonschema.Object{
 			Properties: map[string]jsonschema.Schema{
 				"path": jsonschema.String{
