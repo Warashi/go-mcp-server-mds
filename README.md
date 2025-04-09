@@ -29,6 +29,7 @@ Here's a basic example of how to create and use the MCP markdown server:
 package main
 
 import (
+    "context"
     "os"
 
     mcpmds "github.com/Warashi/go-mcp-server-mds"
@@ -74,6 +75,8 @@ $HOME/go/bin/mcp-server-mds -path /path/to/your/markdown/files
 
 Flags:
 - `-path`: Specifies the directory containing the markdown files to serve. Defaults to the current directory (`.`).
+- `-name`: Sets the server name. Defaults to `mcp-server-mds`.
+- `-description`: Sets the server description. Defaults to `Markdown Documents Server`.
 
 ## Available Tools
 
