@@ -179,6 +179,9 @@ func (s *Server) readFrontmatter(content []byte) (map[string]any, error) {
 			for _, key := range s.excludeFrontmatter {
 				delete(frontmatter, key)
 			}
+			if len(frontmatter) == 0 {
+				return nil, nil
+			}
 			return frontmatter, nil
 		}
 	}

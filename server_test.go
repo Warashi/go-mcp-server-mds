@@ -16,11 +16,120 @@ import (
 
 func Test_server_readFrontmatter(t *testing.T) {
 	tests := []struct {
-		name    string
-		content []byte
-		want    map[string]any
-		wantErr bool
+		name               string
+		content            []byte
+		excludeFrontmatter []string
+		want               map[string]any
+		wantErr            bool
 	}{
+		{
+			name: "YAML frontmatter without exclusion",
+			content: []byte(`---
+title: Test YAML
+draft: true
+_internal: secret
+private: hidden
+---
+Regular content`),
+			excludeFrontmatter: nil,
+			want: map[string]any{
+				"title":     "Test YAML",
+				"draft":     true,
+				"_internal": "secret",
+				"private":   "hidden",
+			},
+			wantErr: false,
+		},
+		{
+			name: "YAML frontmatter with single key exclusion",
+			content: []byte(`---
+title: Test YAML
+draft: true
+_internal: secret
+private: hidden
+---
+Regular content`),
+			excludeFrontmatter: []string{"draft"},
+			want: map[string]any{
+				"title":     "Test YAML",
+				"_internal": "secret",
+				"private":   "hidden",
+			},
+			wantErr: false,
+		},
+		{
+			name: "YAML frontmatter with multiple key exclusion",
+			content: []byte(`---
+title: Test YAML
+draft: true
+_internal: secret
+private: hidden
+status: published
+---
+Regular content`),
+			excludeFrontmatter: []string{"draft", "private", "_internal"},
+			want: map[string]any{
+				"title":  "Test YAML",
+				"status": "published",
+			},
+			wantErr: false,
+		},
+		{
+			name: "TOML frontmatter with key exclusion",
+			content: []byte(`+++
+title = "Test TOML"
+draft = true
+_internal = "secret"
+private = "hidden"
++++
+Regular content`),
+			excludeFrontmatter: []string{"draft", "private", "_internal"},
+			want: map[string]any{
+				"title": "Test TOML",
+			},
+			wantErr: false,
+		},
+		{
+			name: "Exclude all keys",
+			content: []byte(`---
+draft: true
+_internal: secret
+private: hidden
+---
+Regular content`),
+			excludeFrontmatter: []string{"draft", "_internal", "private"},
+			want:               nil,
+			wantErr:            false,
+		},
+		{
+			name: "Exclude non-existent keys",
+			content: []byte(`---
+title: Test YAML
+author: Someone
+---
+Regular content`),
+			excludeFrontmatter: []string{"draft", "private"},
+			want: map[string]any{
+				"title":  "Test YAML",
+				"author": "Someone",
+			},
+			wantErr: false,
+		},
+		{
+			name: "Case sensitive exclusion",
+			content: []byte(`---
+Title: Test YAML
+DRAFT: true
+draft: false
+---
+Regular content`),
+			excludeFrontmatter: []string{"draft"},
+			want: map[string]any{
+				"Title": "Test YAML",
+				"DRAFT": true,
+			},
+			wantErr: false,
+		},
 		{
 			name: "YAML frontmatter",
 			content: []byte(`---
@@ -132,10 +241,9 @@ Content with +++ delimiter`),
 		},
 	}
 
-	s := &Server{} // Create a dummy server instance, fs is not needed for this method
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			s := &Server{excludeFrontmatter: tt.excludeFrontmatter}
 			got, err := s.readFrontmatter(tt.content)
 
 			if tt.wantErr {
