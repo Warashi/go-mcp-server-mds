@@ -132,7 +132,7 @@ Content with +++ delimiter`),
 		},
 	}
 
-	s := &server{} // Create a dummy server instance, fs is not needed for this method
+	s := &Server{} // Create a dummy server instance, fs is not needed for this method
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -194,7 +194,7 @@ func Test_server_listMarkdownFiles(t *testing.T) {
 		"fake.md": {Mode: fs.ModeDir | 0755, ModTime: now},
 	}
 
-	s := &server{fs: testFS} // Only fs is needed for listMarkdownFiles
+	s := &Server{fs: testFS} // Only fs is needed for listMarkdownFiles
 
 	resp, err := s.listMarkdownFiles(context.Background(), nil)
 	if err != nil {
@@ -251,7 +251,7 @@ func Test_server_readMarkdownFile(t *testing.T) {
 		"no_frontmatter.md": {Data: []byte("just content"), ModTime: now, Mode: 0644},
 	}
 
-	s := &server{fs: testFS}
+	s := &Server{fs: testFS}
 
 	tests := []struct {
 		name    string
@@ -332,7 +332,7 @@ func Test_server_ReadResource(t *testing.T) {
 		"dir/file2.md": {Data: []byte("content2"), ModTime: now, Mode: 0644},
 	}
 
-	s := &server{fs: testFS}
+	s := &Server{fs: testFS}
 
 	tests := []struct {
 		name    string

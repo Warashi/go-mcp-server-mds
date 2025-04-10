@@ -20,30 +20,50 @@ import (
 	"github.com/goccy/go-yaml"
 )
 
-// server implements the core logic for serving markdown files via MCP.
+// Server implements the core logic for serving markdown files via MCP.
 // It wraps an fs.FS and provides tools and resource reading capabilities.
-type server struct {
-	name        string
-	description string
-	fs          fs.FS
-	opts        []mcp.ServerOption
+type Server struct {
+	name               string
+	description        string
+	fs                 fs.FS
+	opts               []mcp.ServerOption
+	excludeFrontmatter []string
+}
+
+// ServerOption is a function that configures a Server.
+type ServerOption func(*Server)
+
+// WithMCPOptions sets additional MCP server options.
+func WithMCPOptions(opts ...mcp.ServerOption) ServerOption {
+	return func(s *Server) {
+		s.opts = append(s.opts, opts...)
+	}
+}
+
+// WithExcludeFrontmatter sets the frontmatter keys to exclude from the resource description.
+func WithExcludeFrontmatter(keys ...string) ServerOption {
+	return func(s *Server) {
+		s.excludeFrontmatter = append(s.excludeFrontmatter, keys...)
+	}
 }
 
 // New creates a new MCP server instance configured to serve markdown files from
 // the provided filesystem.
 // It initializes the server with a name, description, the filesystem, and optional
 // mcp.ServerOption configurations.
-func New(name, description string, fs fs.FS, opts ...mcp.ServerOption) (*mcp.Server, error) {
-	s := &server{
+func New(name, description string, fs fs.FS, opts ...ServerOption) (*mcp.Server, error) {
+	s := &Server{
 		name:        name,
 		description: description,
 		fs:          fs,
-		opts:        opts,
+	}
+	for _, opt := range opts {
+		opt(s)
 	}
 	return s.server()
 }
 
-func (s *server) server() (*mcp.Server, error) {
+func (s *Server) server() (*mcp.Server, error) {
 	opts, err := s.listResourcesOption()
 	if err != nil {
 		return nil, err
@@ -57,7 +77,7 @@ func (s *server) server() (*mcp.Server, error) {
 	return mcp.NewServer(s.name, s.description, opts...)
 }
 
-func (s *server) listMarkdownFilesTool() mcp.Tool[*listMarkdownFilesRequest, *listMarkdownFilesResponse] {
+func (s *Server) listMarkdownFilesTool() mcp.Tool[*listMarkdownFilesRequest, *listMarkdownFilesResponse] {
 	return mcp.NewToolFunc(
 		fmt.Sprintf("list_%s_markdown_files", s.name),
 		fmt.Sprintf("List all markdown files managed by %s", s.name),
@@ -83,7 +103,7 @@ type markdownFileInfo struct {
 	Frontmatter map[string]any `json:"frontmatter"`
 }
 
-func (s *server) markdownFiles() iter.Seq[markdownFileInfo] {
+func (s *Server) markdownFiles() iter.Seq[markdownFileInfo] {
 	return func(yield func(markdownFileInfo) bool) {
 		fs.WalkDir(s.fs, ".", func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
@@ -107,11 +127,11 @@ func (s *server) markdownFiles() iter.Seq[markdownFileInfo] {
 	}
 }
 
-func (s *server) listMarkdownFiles(ctx context.Context, _ *listMarkdownFilesRequest) (*listMarkdownFilesResponse, error) {
+func (s *Server) listMarkdownFiles(ctx context.Context, _ *listMarkdownFilesRequest) (*listMarkdownFilesResponse, error) {
 	return &listMarkdownFilesResponse{Files: slices.Collect(s.markdownFiles())}, nil
 }
 
-func (s *server) readMarkdownInfo(path string, d fs.DirEntry) (markdownFileInfo, error) {
+func (s *Server) readMarkdownInfo(path string, d fs.DirEntry) (markdownFileInfo, error) {
 	info, err := d.Info()
 	if err != nil {
 		return markdownFileInfo{}, err
@@ -131,7 +151,7 @@ func (s *server) readMarkdownInfo(path string, d fs.DirEntry) (markdownFileInfo,
 	}, nil
 }
 
-func (s *server) readFrontmatter(content []byte) (map[string]any, error) {
+func (s *Server) readFrontmatter(content []byte) (map[string]any, error) {
 	type unmarshaler struct {
 		Unmarshaler func([]byte, interface{}) error
 		Delimiter   string
@@ -156,13 +176,16 @@ func (s *server) readFrontmatter(content []byte) (map[string]any, error) {
 			if err := u.Unmarshaler(content[start+len(u.Delimiter):start+len(u.Delimiter)+end], &frontmatter); err != nil {
 				return nil, err
 			}
+			for _, key := range s.excludeFrontmatter {
+				delete(frontmatter, key)
+			}
 			return frontmatter, nil
 		}
 	}
 	return nil, nil
 }
 
-func (s *server) readMarkdownFileTool() mcp.Tool[*readMarkdownFileRequest, *readMarkdownFileResponse] {
+func (s *Server) readMarkdownFileTool() mcp.Tool[*readMarkdownFileRequest, *readMarkdownFileResponse] {
 	return mcp.NewToolFunc(
 		fmt.Sprintf("read_%s_markdown_file", s.name),
 		fmt.Sprintf("Read a markdown file managed by %s", s.name),
@@ -195,7 +218,7 @@ type readMarkdownFileResponse struct {
 	Content string `json:"content"`
 }
 
-func (s *server) readMarkdownFile(ctx context.Context, request *readMarkdownFileRequest) (*readMarkdownFileResponse, error) {
+func (s *Server) readMarkdownFile(ctx context.Context, request *readMarkdownFileRequest) (*readMarkdownFileResponse, error) {
 	content, err := fs.ReadFile(s.fs, request.Path)
 	if err != nil {
 		return nil, err
@@ -216,7 +239,7 @@ func (s *server) readMarkdownFile(ctx context.Context, request *readMarkdownFile
 	}, nil
 }
 
-func (s *server) listResourcesOption() ([]mcp.ServerOption, error) {
+func (s *Server) listResourcesOption() ([]mcp.ServerOption, error) {
 	opts := []mcp.ServerOption{}
 	for f := range s.markdownFiles() {
 		desc, err := json.Marshal(f.Frontmatter)
@@ -234,13 +257,13 @@ func (s *server) listResourcesOption() ([]mcp.ServerOption, error) {
 	return opts, nil
 }
 
-func (s *server) resourceReader() mcp.ResourceReader {
+func (s *Server) resourceReader() mcp.ResourceReader {
 	return s
 }
 
 // ReadResource implements the mcp.ResourceReader interface.
 // It reads the content of a resource specified by a file URI.
-func (s *server) ReadResource(ctx context.Context, request *mcp.Request[mcp.ReadResourceRequestParams]) (*mcp.Result[mcp.ReadResourceResultData], error) {
+func (s *Server) ReadResource(ctx context.Context, request *mcp.Request[mcp.ReadResourceRequestParams]) (*mcp.Result[mcp.ReadResourceResultData], error) {
 	if !strings.HasPrefix(request.Params.URI, "file://") {
 		return nil, errors.New("unsupported scheme: " + request.Params.URI)
 	}
